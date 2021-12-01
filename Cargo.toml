@@ -1,0 +1,17 @@
+[package]
+name = "aoc2021"
+version = "0.1.0"
+authors = ["Zoey Mertes <zmertes@zmertes.net>"]
+edition = "2021"
+
+[dependencies]
+rayon = "1.5.0"
+nom = "6.0.1"
+aoc-runner = "0.3.0"
+aoc-runner-derive = "0.3.0"
+lazy_static = "1.4.0"
+petgraph = "0.5.1"
+itertools = "0.9.0"
+
+[profile.release]
+panic = 'abort'
