@@ -17,8 +17,8 @@ pub fn part1(input: &[usize]) -> u32 {
 	increases
 }
 
-#[aoc(day1, part2)]
-pub fn part2(input: &[usize]) -> u32 {
+#[aoc(day1, part2, orig)]
+pub fn part2_orig(input: &[usize]) -> u32 {
 	let mut windows = vec![];
 	for i in 0..input.len()-2 {
 		windows.push(input[i] + input[i+1] + input[i+2]);
@@ -26,9 +26,14 @@ pub fn part2(input: &[usize]) -> u32 {
 	part1(&windows)
 }
 
+#[aoc(day1, part2, oneliner)]
+pub fn part2_oneliner(input: &[usize]) -> u32 {
+	part1(&input.windows(3).map(|x| x.iter().sum()).collect::<Vec<usize>>())
+}
+
 #[cfg(test)]
 mod tests {
-	use super::{day1_gen, part1, part2};
+	use super::{day1_gen, part1, part2_orig as part2};
 	
 	#[test]
 	fn sample1() {
