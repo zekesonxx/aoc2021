@@ -1,7 +1,7 @@
 use nom::IResult;
-use nom::bytes::complete::{take, take_while1, take_until};
+use nom::bytes::complete::{take_while1, take_until};
 use nom::character::complete::char;
-use nom::character::{is_digit, is_alphanumeric};
+use nom::character::is_digit;
 use nom::sequence::tuple;
 
 use std::str;
@@ -33,8 +33,8 @@ pub fn day2_gen(input: &str) -> Vec<Action> {
 
 #[aoc(day2, part1)]
 pub fn part1(input: &[Action]) -> isize {
-	let mut h = 0isize;
-	let mut d = 0isize;
+	let mut h = 0;
+	let mut d = 0;
 	for action in input {
 		match action {
 			Forward(x) => h += x,
@@ -47,12 +47,12 @@ pub fn part1(input: &[Action]) -> isize {
 
 #[aoc(day2, part2)]
 pub fn part2(input: &[Action]) -> isize {
-	let mut h = 0isize;
-	let mut d = 0isize;
+	let mut h = 0;
+	let mut d = 0;
 	let mut aim = 0;
 	for action in input {
 		match action {
-			Forward(x) => {	h += x; d += aim*x; },
+			Forward(x) => { h += x; d += aim*x; },
 			Down(x) => aim += x,
 			Up(x) => aim -= x
 		}
