@@ -10,7 +10,7 @@ impl BingoBoard {
 		let mut i = 0;
 		for line in input.split('\n') {
 			let nums: Vec<(usize, bool)> = line.split_whitespace().map(|x| (x.parse().unwrap(), false)).collect();
-			board[i].copy_from_slice(&nums);
+			board[i] = nums.try_into().unwrap();
 			i += 1;
 		}
 		BingoBoard {
@@ -103,6 +103,9 @@ pub fn part2(input: &(Vec<usize>, Vec<BingoBoard>)) -> usize {
 				true
 			}
 		});
+		if boards.len() == 0 {
+			break;
+		}
 
 	}
 	last_won_score
