@@ -19,7 +19,7 @@ impl BingoBoard {
 
 	}
 	fn mark(&mut self, number: usize) {
-		for mut line in &mut self.board {
+		for line in &mut self.board {
 			for mut column in line {
 				if column.0 == number {
 					column.1 = true;
@@ -49,6 +49,17 @@ impl BingoBoard {
 		}
 		false
 	}
+	fn unmarked_sum(&self) -> usize {
+		let mut sum = 0;
+		for line in self.board {
+			for col in line {
+				if col.1 == false {
+					sum += col.0;
+				}
+			}
+		}
+		sum
+	}
 }
 
 
@@ -56,7 +67,7 @@ impl BingoBoard {
 pub fn day4_gen(input: &str) -> (Vec<usize>, Vec<BingoBoard>) {
         let mut sections = input.split("\n\n");
 	let nums: Vec<usize> = sections.next().unwrap().split(',').map(|x| x.parse().unwrap()).collect();
-	let mut boards: Vec<BingoBoard> = sections.map(|x| BingoBoard::new(x)).collect();
+	let boards: Vec<BingoBoard> = sections.map(|x| BingoBoard::new(x)).collect();
 	(nums, boards)
 }
 
@@ -65,14 +76,36 @@ pub fn part1(input: &(Vec<usize>, Vec<BingoBoard>)) -> usize {
 	let nums = &input.0;
 	let mut boards = input.1.clone();
 	for num in nums {
-		println!("{:?}", num);
+		for board in &mut boards {
+			board.mark(*num);
+			if board.has_won() {
+				return *num * board.unmarked_sum();
+			}
+		}
 	}
 	0
 }
 
 #[aoc(day4, part2)]
 pub fn part2(input: &(Vec<usize>, Vec<BingoBoard>)) -> usize {
-	0
+	let nums = &input.0;
+	let mut boards = input.1.clone();
+	let mut last_won_score = 0;
+	for num in nums {
+		for board in &mut boards {
+			board.mark(*num);
+		}
+		boards.retain(|board| {
+			if board.has_won() {
+				last_won_score = *num * board.unmarked_sum();
+				false
+			} else {
+				true
+			}
+		});
+
+	}
+	last_won_score
 }
 
 #[cfg(test)]
@@ -122,7 +155,7 @@ mod tests {
 10 16 15  9 19
 18  8 23 26 20
 22 11 13  6  5
- 2  0 12  3  7")), 5);
+ 2  0 12  3  7")), 1924);
 	}
 
 	#[test]
