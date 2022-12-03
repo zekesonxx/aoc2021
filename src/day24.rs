@@ -119,7 +119,7 @@ pub enum OptimizedOp {
 	// mul y 25
 	// -> if (x==w) {y=0} else {y=25}
 	/// left, right, dest, value
-	ConditionalSet(var, var, var, isize),
+	//ConditionalSet(var, var, var, isize),
 
 	//mul x 0
 	// -> x=0
@@ -189,12 +189,10 @@ impl From<Op> for OptimizedOp {
 }
 
 impl OptimizedOp {
-	pub fn to_rust_src(&self, input_counter: &mut usize) -> String {
+	fn to_rust_src_inner(&self, input_counter: &mut usize) -> String {
 		use OptimizedOp::*;
-		//let boilerplate = "let mut w = 0isize;let mut x = 0isize;let mut y = 0isize;let mut z =0isize;";
 		match self {
 			Inp(a) => format!("{}=input[{}];", a, {*input_counter+=1;*input_counter-1}),
-			//Inp(a) => format!("return z;}}pub fn digit{c}(input: isize) -> isize {{{bp}{a}=input;", a=a, bp=boilerplate, c={*input_counter+=1;*input_counter-1}),
 			Add(a, b) => format!("{}+={};", a, b),
 			AddLiteral(a, b) => format!("{}+={};", a, b),
 			Mul(a, b) => format!("{}*={};", a, b),
@@ -208,8 +206,6 @@ impl OptimizedOp {
 			Zero(a) => format!("{a}=0;", a=a),
 			Copy(dest, src) => format!("{}={};", dest, src),
 			InvertedEql(a, b) => format!("{a}=if {a}=={b} {{0}}else{{1}};", a = a, b = b),
-			ConditionalSet(left, right, dest, value) => 
-				format!("{dest}=if {left}=={right} {{0}}else{{{value}}};", left=left,right=right,dest=dest,value=value),
 			SetLiteral(dest, value) => format!("{}={};", dest, value),
 			MulStore(dest, src, value) => format!("{}={}*{};", dest, src, value),
 			AddStore(dest, src, value) => format!("{}={}+{};", dest, src, value),
@@ -220,6 +216,73 @@ impl OptimizedOp {
 			Noop => String::new(),
 		}
 	}
+
+	pub fn to_rust_src(&self, input_counter: &mut usize) -> String {
+		let mut inner = self.to_rust_src_inner(input_counter);
+		if let Some(v) = self.writes().get(0) {
+			if self.will_overwrite(*v) {
+				inner.insert_str(0, "let mut ");
+			}
+		}
+		inner
+	}
+
+	/// Returns, in order:
+	/// 0: list of variable(s) that are read by this opcode
+	/// 1: list of variable(s) that are written to by this opcode
+	/// 
+	/// if variable is in 1 and 2, then it is written to with reference to its own value (x=x+2)
+	/// if variable is only in 1, then it is read but not written (x in y=x+2)
+	/// if variable is only in 2, then it is written to with no reference to its own value (x in x=2, x in x=y+2)
+	//                                read  , written
+	fn combined_metadata(&self) -> (Vec<var>, Vec<var>) {
+		use OptimizedOp::*;
+		match self {
+			Inp(a) => (vec![], vec![*a]),
+			Add(a, b) | Mul(a, b) | Div(a, b) | Mod(a, b) => (vec![*a], vec![*a, *b]),
+			AddLiteral(a, _) | MulLiteral(a, _) | DivLiteral(a, _) | ModLiteral(a, _) => (vec![*a], vec![*a]),
+			Eql(a, b) => (vec![*a], vec![*a, *b]),
+			EqlLiteral(a, _) => (vec![*a], vec![*a]),
+			Zero(a) => (vec![*a], vec![*a]),
+			Copy(dest, src) => (vec![*src], vec![*dest]),
+			InvertedEql(a, b) => (vec![*a, *b], vec![*a]),
+			SetLiteral(dest, _) => (vec![*dest], vec![]),
+			MulStore(dest, src, _) |
+			AddStore(dest, src, _) |
+			DivStore(dest, src, _) |
+			ModStore(dest, src, _) |
+			DivByStore(dest, src, _) |
+			ModByStore(dest, src, _)  => (vec![*src], vec![*dest]),
+			Noop => (vec![], vec![]),
+		}
+	}
+
+	/// Get a list of variables that this opcode reads from
+	pub fn reads(&self) -> Vec<var> {
+		self.combined_metadata().0
+	}
+
+	/// Get a list of variables that this opcode overwrites
+	pub fn writes(&self) -> Vec<var> {
+		self.combined_metadata().1
+	}
+
+	// Return true if the opcode will overwrite the provided variable
+	pub fn will_write(&self, v: var) -> bool {
+		self.writes().contains(&v)
+	}
+
+	// Return true if the opcode will read from the provided variable
+	pub fn will_read(&self, v: var) -> bool {
+		self.reads().contains(&v)
+	}
+
+	// Return true if the opcode will write to the variable without
+	// consideration of the variable's previous value
+	pub fn will_overwrite(&self, v: var) -> bool {
+		!self.will_read(v) && self.will_write(v)
+	}
+
 }
 
 trait Optimize {
@@ -265,6 +328,8 @@ impl Optimize for Vec<OptimizedOp> {
 							}
 						}
 					},
+					// this causes side effects
+					// we would need to check ahead if anything reads x before it next gets overwritten
 					// InvertedEql(left, right) => {
 					// 	if let OptimizedOp::MulStore(dest, src, value) = next_op {
 					// 		if *left == *src {
@@ -541,13 +606,17 @@ impl ALU {
 		println!("{}->{}", before, after);
 
 		let mut i = 0usize;
-		for op in program {
+		for (position, op) in program.iter().enumerate() {
+			if let OptimizedOp::Inp(_) = op {
+				output += "\n";
+			}
 			output += &op.to_rust_src(&mut i);
 			output += "\n";
 			let mut k = 5;
 			k %= 2;
 		}
 
+		output += "\n";
 		output += stringify! {
 			(w,x,y,z)
 		};
@@ -671,6 +740,7 @@ pub fn part2(input: &[Op]) -> usize {
 	0
 }
 
+#[allow(unused_assignments)]
 pub fn original_alu_generated_program(input : & [isize]) ->
 (isize, isize, isize, isize) {
 assert_eq!(input.len(), 14, "invalid number of input digits");let mut w = 0isize ; let mut x = 0isize ; let mut y = 0isize ; let mut z =
@@ -931,163 +1001,159 @@ z+=y;
 (w, x, y, z)
 }
 
-
+#[allow(unused_assignments)]
 pub fn alu_generated_program(input : & [isize]) ->
 (isize, isize, isize, isize) {
 assert_eq!(input.len(), 14, "invalid number of input digits");let mut w = 0isize ; let mut x = 0isize ; let mut y = 0isize ; let mut z =
 0isize ;
 
-w=input[0];
-x=z%26;
+let mut w=input[0];
+let mut x=z%26;
 x+=13;
 x=if x==w {0}else{1};
-y=x*25;
+let mut y=x*25;
 y+=1;
 z*=y;
-y=w+6;
+let mut y=w+6;
 y*=x;
 z+=y;
-w=input[1];
-x=z%26;
+let mut w=input[1];
+let mut x=z%26;
 x+=15;
 x=if x==w {0}else{1};
-y=x*25;
+let mut y=x*25;
 y+=1;
 z*=y;
-y=w+7;
+let mut y=w+7;
 y*=x;
 z+=y;
-w=input[2];
-x=z%26;
+let mut w=input[2];
+let mut x=z%26;
 x+=15;
 x=if x==w {0}else{1};
-y=x*25;
+let mut y=x*25;
 y+=1;
 z*=y;
-y=w+10;
+let mut y=w+10;
 y*=x;
 z+=y;
-w=input[3];
-x=z%26;
+let mut w=input[3];
+let mut x=z%26;
 x+=11;
 x=if x==w {0}else{1};
-y=x*25;
+let mut y=x*25;
 y+=1;
 z*=y;
-y=w+2;
+let mut y=w+2;
 y*=x;
 z+=y;
-w=input[4];
-x=z%26;
+let mut w=input[4];
+let mut x=z%26;
 z/=26;
 x+=-7;
 x=if x==w {0}else{1};
-y=x*25;
+let mut y=x*25;
 y+=1;
 z*=y;
-y=w+15;
+let mut y=w+15;
 y*=x;
 z+=y;
-w=input[5];
-x=z%26;
+let mut w=input[5];
+let mut x=z%26;
 x+=10;
 x=if x==w {0}else{1};
-y=x*25;
+let mut y=x*25;
 y+=1;
 z*=y;
-y=w+8;
+let mut y=w+8;
 y*=x;
 z+=y;
-w=input[6];
-x=z%26;
+let mut w=input[6];
+let mut x=z%26;
 x+=10;
 x=if x==w {0}else{1};
-y=x*25;
+let mut y=x*25;
 y+=1;
 z*=y;
-y=w+1;
+let mut y=w+1;
 y*=x;
 z+=y;
-w=input[7];
-x=z%26;
+let mut w=input[7];
+let mut x=z%26;
 z/=26;
 x+=-5;
 x=if x==w {0}else{1};
-y=x*25;
+let mut y=x*25;
 y+=1;
 z*=y;
-y=w+10;
+let mut y=w+10;
 y*=x;
 z+=y;
-w=input[8];
-x=z%26;
+let mut w=input[8];
+let mut x=z%26;
 x+=15;
 x=if x==w {0}else{1};
-y=x*25;
+let mut y=x*25;
 y+=1;
 z*=y;
-y=w+5;
+let mut y=w+5;
 y*=x;
 z+=y;
-w=input[9];
-x=z%26;
+let mut w=input[9];
+let mut x=z%26;
 z/=26;
 x+=-3;
 x=if x==w {0}else{1};
-y=x*25;
+let mut y=x*25;
 y+=1;
 z*=y;
-y=w+3;
+let mut y=w+3;
 y*=x;
 z+=y;
-w=input[10];
-x=z%26;
+let mut w=input[10];
+let mut x=z%26;
 z/=26;
-x+=0;
 x=if x==w {0}else{1};
-y=x*25;
+let mut y=x*25;
 y+=1;
 z*=y;
-y=w+5;
+let mut y=w+5;
 y*=x;
 z+=y;
-w=input[11];
-x=z%26;
+let mut w=input[11];
+let mut x=z%26;
 z/=26;
 x+=-5;
 x=if x==w {0}else{1};
-y=x*25;
+let mut y=x*25;
 y+=1;
 z*=y;
-y=w+11;
+let mut y=w+11;
 y*=x;
 z+=y;
-w=input[12];
-x=z%26;
+let mut w=input[12];
+let mut x=z%26;
 z/=26;
 x+=-9;
 x=if x==w {0}else{1};
-y=x*25;
+let mut y=x*25;
 y+=1;
 z*=y;
-y=w+12;
+let mut y=w+12;
 y*=x;
 z+=y;
-w=input[13];
-x=z%26;
+let mut w=input[13];
+let mut x=z%26;
 z/=26;
-x+=0;
 x=if x==w {0}else{1};
-y=x*25;
+let mut y=x*25;
 y+=1;
 z*=y;
-y=w+10;
+let mut y=w+10;
 y*=x;
 z+=y;
 (w, x, y, z)
 }
-
-
 
 
 #[cfg(test)]
