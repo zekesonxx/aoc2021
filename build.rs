@@ -18,5 +18,7 @@ const MONAD_SOURCE: &str = include_str!("./input/2021/day24.txt");
 
 fn main() {
     let program = day24::primitives::parse_alu_program(MONAD_SOURCE);
-    fs::write("./src/day24/alu_generated.rs", day24::rustgen::generate_rust(&program)).unwrap();
+    fs::write("./src/day24/alu_generated.rs", day24::rustgen::generate_rust(&program, true)).unwrap();
+    fs::write("./src/day24/alu_generated_unoptimized.rs", day24::rustgen::generate_rust(&program, false)).unwrap();
+
 }

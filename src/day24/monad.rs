@@ -1,9 +1,3 @@
-#![allow(dead_code)]
-use itertools::Itertools;
-
-use super::alu::ALU;
-use super::primitives::num_digits;
-
 #[derive(Default, Debug, Clone, Copy)]
 pub struct MONAD {
 	next_digit: u8,
@@ -62,13 +56,6 @@ impl MONAD {
 		let (a, _, _) = MONAD::consts(self.next_digit);
 		let x = self.output%26;
 		(1..=9).filter(|w| *w==x+a).collect()
-	}
-
-	pub fn next_digits_lookahead_preferred(&self) -> Vec<isize> {
-		if self.is_done() { return vec![]; }
-		let (a, _, _) = MONAD::consts(self.next_digit);
-		let x = self.output%26;
-		(1..=9).filter(|w| *w==x+a).chain((1..=9).filter(|w| *w!=x+a)).collect_vec()
 	}
 
 	pub fn get_output(&self) -> isize {

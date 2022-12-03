@@ -1,7 +1,7 @@
 use super::optimizedop::*;
 use super::primitives::*;
 
-pub fn generate_rust(program: &[Op]) -> String {
+pub fn generate_rust(program: &[Op], optimize: bool) -> String {
     let mut output = String::new();
     output += stringify! {
         #[allow(dead_code)]
@@ -25,7 +25,9 @@ pub fn generate_rust(program: &[Op]) -> String {
 
     let mut program: Vec<OptimizedOp> = program.iter().map(|op| (*op).into()).collect();
     let before = program.len();
-    for _ in 1..15 { program.optimize(); }
+    if optimize {
+        for _ in 1..15 { program.optimize(); }
+    }
     let after = program.len();
     println!("{}->{}", before, after);
 

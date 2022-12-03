@@ -1,4 +1,4 @@
-// #![allow(dead_code)]
+#![allow(dead_code)]
 // #![allow(unused_mut)]
 // #![allow(unused_assignments)]
 
@@ -7,187 +7,89 @@ mod optimizedop;
 mod alu;
 mod monad;
 mod alu_generated;
+mod alu_generated_unoptimized;
 mod rustgen;
 mod modified_gen;
 
 use itertools::Itertools;
 use primitives::*;
+use rayon::prelude::*;
 
-//use crate::day24::rustgen::generate_rust;
 use monad::*;
 
 #[aoc_generator(day24)]
-pub fn gen(input: &str) -> Vec<Op> {
-	primitives::parse_alu_program(input)
+pub fn gen(_input: &str) -> Vec<Op> {
+	vec![]
+	//primitives::parse_alu_program(input)
+}
+
+pub fn step_any(digits: Vec<isize>) -> Vec<Vec<isize>> {
+	// let mut monad = MONAD::new();
+	// for digit in &digits {
+	// 	monad.step(*digit);
+	// }
+	(1..=9).map(|l| {
+		let mut digits = digits.clone();
+		digits.push(l);
+		digits
+	}).collect_vec()
+}
+pub fn step_lookahead(digits: Vec<isize>) -> Vec<Vec<isize>> {
+	let mut monad = MONAD::new();
+	for digit in &digits {
+		monad.step(*digit);
+	}
+	monad.lookahead_digits().iter().map(|l| {
+		let mut digits = digits.clone();
+		digits.push(*l);
+		digits
+	}).collect_vec()
 }
 
 #[aoc(day24, part1)]
-pub fn part1(input: &[Op]) -> usize {
-	use rayon::prelude::*;
-	//let alu = ALU::new(input);
-	//println!("{}", generate_rust(input));
-	//let mut monad = MONAD::new();
-	
-	let max: Vec<isize> = {11111isize..99999}.into_par_iter()//.rev()
-	//.inspect(|x| println!("checking {}", x))
-	.map(|serial| {//6
-		let mut monad = MONAD::new();
-		let digits = num_digits(serial);
-		if digits.contains(&0) {
-			return vec![];
-		}
-		
-		for digit in &digits {
-			monad.step(*digit);
-		}
-		monad.next_digits_lookahead_preferred().iter().map(|l| {
-			let mut digits = digits.clone();
-			digits.push(*l);
-			digits
-		}).collect_vec()
+pub fn part1(_input: &[Op]) -> isize {
+	{1111111isize..9999999}
+	.into_par_iter()
+	.map(|serial| {
+		num_digits(serial)
 	})
-	.flatten()
-	//.inspect(|x| println!("found plausible prefix {:?}", x))
-	.map(|digits| {//7
-		let mut monad = MONAD::new();
-		for digit in &digits {
-			monad.step(*digit);
-		}
-		monad.next_digits_lookahead_preferred().iter().map(|l| {
-			let mut digits = digits.clone();
-			digits.push(*l);
-			digits
-		}).collect_vec()
-	})
-	.flatten()
-	.map(|digits| {//8
-		let mut monad = MONAD::new();
-		for digit in &digits {
-			monad.step(*digit);
-		}
-		monad.lookahead_digits().iter().map(|l| {
-			let mut digits = digits.clone();
-			digits.push(*l);
-			digits
-		}).collect_vec()
-	})
-	.flatten()
-	.map(|digits| {//9
-		let mut monad = MONAD::new();
-		for digit in &digits {
-			monad.step(*digit);
-		}
-		monad.next_digits_lookahead_preferred().iter().map(|l| {
-			let mut digits = digits.clone();
-			digits.push(*l);
-			digits
-		}).collect_vec()
-	})
-	.flatten()
-	.map(|digits| {//9
-		let mut monad = MONAD::new();
-		for digit in &digits {
-			monad.step(*digit);
-		}
-		monad.lookahead_digits().iter().map(|l| {
-			let mut digits = digits.clone();
-			digits.push(*l);
-			digits
-		}).collect_vec()
-	})
-	.flatten()
-	.map(|digits| {//9
-		let mut monad = MONAD::new();
-		for digit in &digits {
-			monad.step(*digit);
-		}
-		monad.lookahead_digits().iter().map(|l| {
-			let mut digits = digits.clone();
-			digits.push(*l);
-			digits
-		}).collect_vec()
-	})
-	.flatten()
-	.map(|digits| {//9
-		let mut monad = MONAD::new();
-		for digit in &digits {
-			monad.step(*digit);
-		}
-		monad.lookahead_digits().iter().map(|l| {
-			let mut digits = digits.clone();
-			digits.push(*l);
-			digits
-		}).collect_vec()
-	})
-	.flatten()
-	.map(|digits| {//9
-		let mut monad = MONAD::new();
-		for digit in &digits {
-			monad.step(*digit);
-		}
-		monad.lookahead_digits().iter().map(|l| {
-			let mut digits = digits.clone();
-			digits.push(*l);
-			digits
-		}).collect_vec()
-	})
-	.flatten()
-	.map(|digits| {//9
-		let mut monad = MONAD::new();
-		for digit in &digits {
-			monad.step(*digit);
-		}
-		monad.lookahead_digits().iter().map(|l| {
-			let mut digits = digits.clone();
-			digits.push(*l);
-			digits
-		}).collect_vec()
-	})
-	.flatten()
-	.map(|digits| {
-		// convert it back into a normal int
-		digits.iter().fold(0, |acc, x| x+(acc*10))
-	})
-	//.inspect(|x| println!("found plausible serial {:?}", x))
-	.collect();
-	println!("{:?}", max);
-	for i in [
-		13161151139617,
-		39494195799979,
-		99998195799123,
-		13579246891998,
-		13579246892998,
-		58284717283482,
-		23488239482631,
-		75351354645944,
-		48753121843556,
-		18753121843556,
-		28753121843556,
-		38753121843556,
-		58753121843556,
-		68753121843556,
-		78753121843556,
-		88753121843556,
-		98753121843556,
-		11111111111111,
-		11119119199999
-		] {
-		let gen = alu_generated::alu_generated_program(&num_digits(i)).3;
-		let mut monad = MONAD::new();
-		for digit in num_digits(i) {
-			monad.step(digit);
-		}
-		let hand = monad.get_output();
-		//let hand = modified_gen::alu_generated_program(&num_digits(i)).3;
-		println!("{:?} {:?}", gen, hand);
-		assert_eq!(gen, hand);
-	}
-	0
+	.filter(|digits| !digits.contains(&0))
+	.map(step_lookahead).flatten()
+	.map(step_any).flatten()
+	.map(step_lookahead).flatten()
+	.map(step_lookahead).flatten()
+	.map(step_lookahead).flatten()
+	.map(step_lookahead).flatten()
+	.map(step_lookahead).flatten()
+	// check it against the original program
+	.filter(|x| alu_generated::alu_generated_program(x).3 == 0)
+	// convert it back into a normal int
+	.map(|digits| digits.iter().fold(0, |acc, x| x+(acc*10)))
+	// find the biggest
+	.max().unwrap()
 }
 
 #[aoc(day24, part2)]
-pub fn part2(_input: &[Op]) -> usize {
-	0
+pub fn part2(_input: &[Op]) -> isize {
+	{1111111isize..9999999}
+	.into_par_iter()
+	.map(|serial| {
+		num_digits(serial)
+	})
+	.filter(|digits| !digits.contains(&0))
+	.map(step_lookahead).flatten()
+	.map(step_any).flatten()
+	.map(step_lookahead).flatten()
+	.map(step_lookahead).flatten()
+	.map(step_lookahead).flatten()
+	.map(step_lookahead).flatten()
+	.map(step_lookahead).flatten()
+	// check it against the original program
+	.filter(|x| alu_generated::alu_generated_program(x).3 == 0)
+	// convert it back into a normal int
+	.map(|digits| digits.iter().fold(0, |acc, x| x+(acc*10)))
+	// find the smallest
+	.min().unwrap()
 }
 
 #[cfg(test)]
@@ -236,19 +138,6 @@ mod w 2";
 		assert_eq!(alu.run_with_input(&[69]), Ok((0,1,0,1)));
 		assert_eq!(alu.run_with_input(&[13]), Ok((1,1,0,1)));
 	}
-
-	// #[test]
-	// #[ignore]
-	// fn optimized_verification() {
-	// 	use rayon::prelude::*;
-	// 	{11111111111111isize..99999999999999}.into_par_iter().rev()
-	// 	.panic_fuse()
-	// 	//.inspect(|x| println!("checking {}", x))
-	// 	.for_each(|serial| {
-	// 		let digits = num_digits(serial);
-	// 		assert_eq!(original_alu_generated_program(&digits), alu_generated_program(&digits));
-	// 	})
-	// }
 	
 	#[test]
 	fn sample1() {
