@@ -8,7 +8,7 @@ pub fn gen(input: &str) -> Vec<usize> {
 pub fn part1_naive(input: &[usize]) -> usize {
 	let mut fish = input.to_vec();
 	let mut newfish = 0;
-	for day in 0..80 {
+	for _day in 0..80 {
 		for f in &mut fish {
 			match f {
 				1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 => *f -= 1,
