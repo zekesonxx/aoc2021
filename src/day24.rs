@@ -10,10 +10,11 @@ mod alu_generated;
 mod rustgen;
 mod modified_gen;
 
+use itertools::Itertools;
 use primitives::*;
 
 //use crate::day24::rustgen::generate_rust;
-//use monad::*;
+use monad::*;
 
 #[aoc_generator(day24)]
 pub fn gen(input: &str) -> Vec<Op> {
@@ -22,24 +23,140 @@ pub fn gen(input: &str) -> Vec<Op> {
 
 #[aoc(day24, part1)]
 pub fn part1(input: &[Op]) -> usize {
-	//use rayon::prelude::*;
+	use rayon::prelude::*;
 	//let alu = ALU::new(input);
 	//println!("{}", generate_rust(input));
-	//let mut monad = MONAD::new(alu);
+	//let mut monad = MONAD::new();
 	
-	// {11111111111111isize..99999999999999}.into_par_iter()//.rev()
-	// //.inspect(|x| println!("checking {}", x))
-	// .map_with(monad, |monad, serial| {
-	// 		if alu_generated_program(&num_digits(serial)).3 == 0 {
-	// 			Some(serial)
-	// 		} else {
-	// 			None
-	// 		}
-	// }).flatten()
-	// .inspect(|x| println!("found valid serial {}", x))
-	// .max();
+	let max: Vec<isize> = {11111isize..99999}.into_par_iter()//.rev()
+	//.inspect(|x| println!("checking {}", x))
+	.map(|serial| {//6
+		let mut monad = MONAD::new();
+		let digits = num_digits(serial);
+		if digits.contains(&0) {
+			return vec![];
+		}
+		
+		for digit in &digits {
+			monad.step(*digit);
+		}
+		monad.next_digits_lookahead_preferred().iter().map(|l| {
+			let mut digits = digits.clone();
+			digits.push(*l);
+			digits
+		}).collect_vec()
+	})
+	.flatten()
+	//.inspect(|x| println!("found plausible prefix {:?}", x))
+	.map(|digits| {//7
+		let mut monad = MONAD::new();
+		for digit in &digits {
+			monad.step(*digit);
+		}
+		monad.next_digits_lookahead_preferred().iter().map(|l| {
+			let mut digits = digits.clone();
+			digits.push(*l);
+			digits
+		}).collect_vec()
+	})
+	.flatten()
+	.map(|digits| {//8
+		let mut monad = MONAD::new();
+		for digit in &digits {
+			monad.step(*digit);
+		}
+		monad.lookahead_digits().iter().map(|l| {
+			let mut digits = digits.clone();
+			digits.push(*l);
+			digits
+		}).collect_vec()
+	})
+	.flatten()
+	.map(|digits| {//9
+		let mut monad = MONAD::new();
+		for digit in &digits {
+			monad.step(*digit);
+		}
+		monad.next_digits_lookahead_preferred().iter().map(|l| {
+			let mut digits = digits.clone();
+			digits.push(*l);
+			digits
+		}).collect_vec()
+	})
+	.flatten()
+	.map(|digits| {//9
+		let mut monad = MONAD::new();
+		for digit in &digits {
+			monad.step(*digit);
+		}
+		monad.lookahead_digits().iter().map(|l| {
+			let mut digits = digits.clone();
+			digits.push(*l);
+			digits
+		}).collect_vec()
+	})
+	.flatten()
+	.map(|digits| {//9
+		let mut monad = MONAD::new();
+		for digit in &digits {
+			monad.step(*digit);
+		}
+		monad.lookahead_digits().iter().map(|l| {
+			let mut digits = digits.clone();
+			digits.push(*l);
+			digits
+		}).collect_vec()
+	})
+	.flatten()
+	.map(|digits| {//9
+		let mut monad = MONAD::new();
+		for digit in &digits {
+			monad.step(*digit);
+		}
+		monad.lookahead_digits().iter().map(|l| {
+			let mut digits = digits.clone();
+			digits.push(*l);
+			digits
+		}).collect_vec()
+	})
+	.flatten()
+	.map(|digits| {//9
+		let mut monad = MONAD::new();
+		for digit in &digits {
+			monad.step(*digit);
+		}
+		monad.lookahead_digits().iter().map(|l| {
+			let mut digits = digits.clone();
+			digits.push(*l);
+			digits
+		}).collect_vec()
+	})
+	.flatten()
+	.map(|digits| {//9
+		let mut monad = MONAD::new();
+		for digit in &digits {
+			monad.step(*digit);
+		}
+		monad.lookahead_digits().iter().map(|l| {
+			let mut digits = digits.clone();
+			digits.push(*l);
+			digits
+		}).collect_vec()
+	})
+	.flatten()
+	.map(|digits| {
+		// convert it back into a normal int
+		digits.iter().fold(0, |acc, x| x+(acc*10))
+	})
+	//.inspect(|x| println!("found plausible serial {:?}", x))
+	.collect();
+	println!("{:?}", max);
 	for i in [
-		13579246899998,
+		13161151139617,
+		39494195799979,
+		99998195799123,
+		13579246891998,
+		13579246892998,
 		58284717283482,
 		23488239482631,
 		75351354645944,
@@ -56,7 +173,12 @@ pub fn part1(input: &[Op]) -> usize {
 		11119119199999
 		] {
 		let gen = alu_generated::alu_generated_program(&num_digits(i)).3;
-		let hand = modified_gen::alu_generated_program(&num_digits(i)).3;
+		let mut monad = MONAD::new();
+		for digit in num_digits(i) {
+			monad.step(digit);
+		}
+		let hand = monad.get_output();
+		//let hand = modified_gen::alu_generated_program(&num_digits(i)).3;
 		println!("{:?} {:?}", gen, hand);
 		assert_eq!(gen, hand);
 	}
@@ -71,6 +193,7 @@ pub fn part2(_input: &[Op]) -> usize {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use super::alu::*;
 	const EXAMPLE1: &str = "inp x
 mul x -1";
 	const EXAMPLE2: &str = "inp z
